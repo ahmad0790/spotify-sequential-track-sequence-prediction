@@ -71,6 +71,9 @@ def generate_track_features_embedding_weights(track_vocabs):
 training_path = '../data/training_set_0/'
 testing_path = '../data/training_set_1/'
 IDX_END = 65
+
+#THIS PARAMETER CONTROLS WHICH SONGS TO INCLUDE IN THE VOCABULARY IN ORDER TO REDUCE VOCAB SIZE
+#IF A SONG OCCURS LESS THAN THE MIN_FREQ IT IS NOT INCLUDED AND MAPPED TO UNK TOKEN INSTEAD
 MIN_FREQ = 10
 
 print("------GENERATING TRAINING DATA------")
@@ -82,12 +85,10 @@ f = open("../data/track_vocabs.pkl","wb")
 pickle.dump(track_vocabs,f)
 f.close()
 
-#track_embedding = generate_track_features_embedding_weights(track_vocabs)
-#np.save('../data/track_embedding.npy', track_embedding)
+track_embedding = generate_track_features_embedding_weights(track_vocabs)
+np.save('../data/track_embedding.npy', track_embedding)
 
-'''
 all_session_tracks, all_session_skips = generate_training_data(training_path, track_vocabs, train_input_logs, idx_start = 0, idx_end = IDX_END)
-
 
 f = open("../data/all_session_tracks_train.pkl","wb")
 pickle.dump(all_session_tracks, f)
@@ -107,4 +108,3 @@ f.close()
 f = open("../data/all_session_skips_test.pkl","wb")
 pickle.dump(all_session_skips, f)
 f.close()
-'''
