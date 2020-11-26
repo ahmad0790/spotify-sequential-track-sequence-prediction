@@ -101,7 +101,7 @@ f.close()
 track_embedding = generate_track_features_embedding_weights(track_vocabs)
 np.save('../data/track_embedding.npy', track_embedding)
 
-all_session_tracks, all_session_skips = generate_training_data(training_path, track_vocabs, train_input_logs, idx_start = 0, idx_end = IDX_END)
+all_session_tracks, all_session_skips, train_df = generate_training_data(training_path, track_vocabs, train_input_logs, idx_start = 0, idx_end = IDX_END)
 
 print("UNIQUE SESSIONS SIZE")
 print(len(all_session_tracks))
@@ -116,7 +116,7 @@ f.close()
 
 print("------GENERATING TESTING DATA------")
 test_input_logs = sorted(glob.glob(testing_path + "log_9*.csv"))
-all_session_tracks, all_session_skips = generate_training_data(testing_path, track_vocabs, test_input_logs, idx_start = 0, idx_end = IDX_END)
+all_session_tracks, all_session_skips, test_df = generate_training_data(testing_path, track_vocabs, test_input_logs, idx_start = 0, idx_end = IDX_END)
 f = open("../data/all_session_tracks_test.pkl","wb")
 pickle.dump(all_session_tracks, f)
 f.close()
