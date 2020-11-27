@@ -74,8 +74,10 @@ def accuracy(output, target):
     """Computes the average accuracy of the predicted skip sequence"""
     
     seq_len = target.shape[1]
+    output = output[target>0]
+    target = target[output>0]
     correct = output.eq(target)
-    correct = correct.sum(dim=1) * 1.0
+    correct = correct.sum() * 1.0
     acc = correct / seq_len
     return acc
 
@@ -118,7 +120,7 @@ def train_bert(model, dataloader, optimizer, criterion, scheduler = None, device
         #label[input_skips==1] = PAD_IDX
 
         outputs = model(input_sequence)
-        acc = mean_average_accuracy(outputs, label)
+        acc = accuracy(outputs, label)
 
         if batch_idx %100 == 0:
             print("MASKED SEQUENCE")
@@ -143,8 +145,10 @@ def train_bert(model, dataloader, optimizer, criterion, scheduler = None, device
         if batch_idx % 100 ==0:
             print("Batch: %d, Train Loss: %.4f, Train Accuracy: %.4f" % ((batch_idx+1), avg_loss.avg, avg_acc.avg))
 
+        '''
         if (batch_idx+1) % 1000 ==0:
             break
+        '''
 
     return avg_loss.avg, avg_acc.avg
 
@@ -289,6 +293,7 @@ train_stats.to_csv ('output/'+model_name+'.csv', index = None, header=True)
 print("DONE EVALUATING")
 
 #SAVE LEARNED EMBEDDINGS
-bert_embedding_weights = model.embed_src.weight.detach().numpy()
-pd.DataFrame(bert_embedding_weights).to_csv('bert_embedding_weights.csv')
+bert_embedding_weights = model.embed_src.weight.detach().cpu().numpy()
+pd.DataFrame(bert_embedding_weights).to_csv('bert_emb_'+model_name+'.csv')
+print("SAVED EMBEDDING")
 

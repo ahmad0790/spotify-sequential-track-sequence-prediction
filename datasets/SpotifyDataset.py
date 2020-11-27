@@ -86,34 +86,32 @@ class SpotifyDataset(Dataset):
     #only for BERT masking words for pre training
     def mask_words(self, input_sequence):
 
-        masked_sequence = copy.deepcopy(input_sequence)
-        #masked_sequence = []
+        #masked_sequence = copy.deepcopy(input_sequence)
+        masked_sequence = []
         labels = []
 
         for i in range(len(input_sequence)):
 
             mask_prob = random.random()
-            #track_index = train_sequence[i]
 
             if mask_prob <= self.bert_mask_proportion:
                 
-                #mask_prob = random.random()
                 mask_prob /= self.bert_mask_proportion
 
                 if mask_prob <= 0.8:
-                    masked_sequence[i] = self.MASK_INDEX
+                    masked_sequence.append(self.MASK_INDEX)
 
                 elif mask_prob <= 0.9:
-                    masked_sequence[i] = random.randrange(2,self.len_track_vocab)
+                    masked_sequence.append(random.randrange(2,self.len_track_vocab))
 
                 else:
-                    masked_sequence[i] = input_sequence[i]
+                    masked_sequence.append(input_sequence[i])
 
                 labels.append(input_sequence[i])
 
             else:
                 #set to 0 any word that is not masked. These will not be trained on in BERT
-                masked_sequence[i] = input_sequence[i]
+                masked_sequence.append(input_sequence[i])
                 labels.append(0)
 
         return masked_sequence, labels
