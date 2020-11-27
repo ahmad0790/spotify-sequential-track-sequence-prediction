@@ -14,11 +14,12 @@ import torch.nn as nn
 # Tqdm progress bar
 from tqdm import tqdm_notebook
 
+from torch.utils.data import Dataset, DataLoader
 from models.Transformer import Transformer
-from datasets.SpotifyDataset import SpotifyDataset
+from datasets.SpotifyDataset import SpotifyDataset, bert_collate_fn, custom_collate_fn
 
 ##FOR BERT LM MASKED PRETRAINING AND EVALUATION
-def train(model, dataloader, optimizer, criterion, scheduler = None):
+def train_bert(model, dataloader, optimizer, criterion, scheduler = None):
 
     model.train()
     total_loss = 0.0
@@ -33,6 +34,31 @@ def train(model, dataloader, optimizer, criterion, scheduler = None):
 
         optimizer.zero_grad()
         loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+        total_loss += loss
+
+        progress_bar.set_description_str("Batch: %d, Loss: %.4f" % ((batch_idx+1), loss.item()))
+
+    return total_loss, total_loss / len(dataloader)
+
+
+def train(model, dataloader, optimizer, criterion, scheduler = None):
+
+    model.train()
+    total_loss = 0.0
+
+    progress_bar = tqdm_notebook(dataloader, ascii = True)
+
+    for batch_idx, (input_sequence, input_skips, label_sequence, label_skips) in enumerate(dataloader):
+
+        outputs = model(input_sequence, label_sequence)
+        outputs = outputs.reshape(-1, outputs.shape[-1])
+        label_sequence = label_sequence.reshape(-1)
+
+        optimizer.zero_grad()
+        loss = criterion(outputs, label_sequence)
         loss.backward()
         optimizer.step()
 
