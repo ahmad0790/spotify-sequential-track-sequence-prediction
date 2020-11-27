@@ -1,4 +1,5 @@
 import math
+import copy
 import random
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -18,6 +19,7 @@ class SpotifyDataset(Dataset):
         #self.MASK_INDEX = 0
         #self.MASK_INDEX  = 1
         self.MASK_INDEX = track_vocab['mask']
+        print(self.MASK_INDEX)
         
         self.SESSION_HALF_LENGTH = 10
         self.bert = bert
@@ -69,7 +71,7 @@ class SpotifyDataset(Dataset):
 
     def split_session(self, sequence, skip_sequence):
 
-        seq_len = math.floor(len(sequence)//2)
+        seq_len = len(sequence)//2
 
         train_sequence = sequence[0:seq_len]
         test_sequence = sequence[seq_len:]
@@ -82,15 +84,16 @@ class SpotifyDataset(Dataset):
         return input_data, labels_data
 
     #only for BERT masking words for pre training
-    def mask_words(self, train_sequence):
+    def mask_words(self, input_sequence):
 
-        seq_len = len(train_sequence)
+        masked_sequence = copy.deepcopy(input_sequence)
+        #masked_sequence = []
         labels = []
 
-        for i in range(seq_len):
+        for i in range(len(input_sequence)):
 
             mask_prob = random.random()
-            track_index = train_sequence[i]
+            #track_index = train_sequence[i]
 
             if mask_prob <= self.bert_mask_proportion:
                 
@@ -98,22 +101,22 @@ class SpotifyDataset(Dataset):
                 mask_prob /= self.bert_mask_proportion
 
                 if mask_prob <= 0.8:
-                    train_sequence[i] = self.MASK_INDEX
+                    masked_sequence[i] = self.MASK_INDEX
 
                 elif mask_prob <= 0.9:
-                    train_sequence[i] = random.randrange(self.len_track_vocab)
+                    masked_sequence[i] = random.randrange(2,self.len_track_vocab)
 
                 else:
-                    train_sequence[i] = track_index
+                    masked_sequence[i] = input_sequence[i]
 
-                labels.append(track_index)
+                labels.append(input_sequence[i])
 
             else:
-
                 #set to 0 any word that is not masked. These will not be trained on in BERT
+                masked_sequence[i] = input_sequence[i]
                 labels.append(0)
 
-        return train_sequence, labels
+        return masked_sequence, labels
 
 def custom_collate_fn(batch):
     input_sequence = torch.LongTensor([item[0] for item in batch])

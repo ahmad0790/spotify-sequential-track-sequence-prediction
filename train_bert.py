@@ -74,10 +74,8 @@ def accuracy(output, target):
     """Computes the average accuracy of the predicted skip sequence"""
     
     seq_len = target.shape[1]
-    output = output[target>0]
-    target = target[target>0]
     correct = output.eq(target)
-    correct = correct.sum() * 1.0
+    correct = correct.sum(dim=1) * 1.0
     acc = correct / seq_len
     return acc
 
@@ -145,10 +143,8 @@ def train_bert(model, dataloader, optimizer, criterion, scheduler = None, device
         if batch_idx % 100 ==0:
             print("Batch: %d, Train Loss: %.4f, Train Accuracy: %.4f" % ((batch_idx+1), avg_loss.avg, avg_acc.avg))
 
-        '''
         if (batch_idx+1) % 1000 ==0:
             break
-        '''
 
     return avg_loss.avg, avg_acc.avg
 
@@ -234,7 +230,6 @@ BATCH_SIZE = 128
 MAX_LEN = 20
 EPOCHS = 5
 SKIP = False
-PAD_MASK = 0
 bert_masking_prob=0.4
 
 train_dataset = SpotifyDataset(train_tracks, train_skips, track_vocab, bert=True, bert_mask_proportion = bert_masking_prob, skip_pred=SKIP, padding=False)

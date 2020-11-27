@@ -113,7 +113,7 @@ def train_transformer_model(model, dataloader, optimizer, criterion, scheduler =
     for batch_idx, (input_sequence, input_skips, label_sequence, label_skips) in enumerate(dataloader):
 
         input_sequence = input_sequence.to(device)
-        input_sequence[input_skips==1] = 1
+        #input_sequence[input_skips==1] = 1
 
         if skip==False:
             label = label_sequence.cuda()
