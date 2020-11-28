@@ -59,12 +59,14 @@ class StandardTransformer(nn.Module):
 			feat_weights = F.normalize(feat_weights, p=2, dim=1)
 			self.feat_embed.weights = nn.Parameter(feat_weights, requires_grad=True)
 
+		'''
 		#get positional embeddings
 		self.positional_encoding = torch.zeros(self.batch_size, self.max_length).to(torch.int64)
 		self.positional_encoding = self.positional_encoding.to(self.device)
 		for i in range(self.batch_size):
 			self.positional_encoding[i,:] = torch.LongTensor([list(range(0,self.max_length))])
-	
+		'''
+
 		self.transformer = nn.Transformer(d_model=self.d_model_combined, nhead=self.nhead, num_encoder_layers=self.num_encoder_layers, num_decoder_layers=self.num_decoder_layers)
 		
 		#change dimension size to 2 if predicting Skip
@@ -89,7 +91,13 @@ class StandardTransformer(nn.Module):
 			#encoder values that are masked because of padding. same as src padding mask
 			memory_key_padding_mask = src_key_padding_mask.clone()
 
-		positional_embeddings = self.pos_embed(self.positional_encoding)
+		#get positional embeddings (#num rows in batch x seq len)
+		positional_encoding = torch.zeros(src.shape[0], src.shape[1]).to(torch.int64)
+		positional_encoding = positional_encoding.to(self.device)
+		for i in range(src.shape[0]):
+			positional_encoding[i,:] = torch.LongTensor([list(range(0,src.shape[1]))])
+		
+		positional_embeddings = self.pos_embed(positional_encoding)
 	
 		#right shift target embedding by 1 (last token is not predicted)
 		if self.skip_pred == False:

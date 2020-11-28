@@ -14,14 +14,15 @@ import torch.nn as nn
 
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-from models.BertSkipTransformer import StandardTransformer
-from datasets.SpotifyDataset import SpotifyDataset, bert_collate_fn, custom_collate_fn
+from models.BertTransformer import BertTransformer
+from datasets.BertModelDataset import BertModelDataset, bert_collate_fn
 from torch.nn import functional as F
 
 #INIT PARAMS
 PATH_OUTPUT = "output/"
-model_name = 'model_bert_transformer_seq_embed_1e-6'
+model_name = 'model_bert_finetune_skip'
 torch.manual_seed(1)
+print(model_name)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("You are using device: %s" % device)
@@ -73,10 +74,12 @@ def accuracy(output, target):
     
     """Computes the average accuracy of the predicted skip sequence"""
     
-    seq_len = target.shape[1]
+    output = torch.argmax(output, dim=2)
+    output = output[target>0]
+    target = target[target>0]
     correct = output.eq(target)
-    correct = correct.sum(axis=1) * 1.0
-    acc = correct / seq_len
+    correct = correct.sum() * 1.0
+    acc = correct / target.shape[0]
     return acc
 
 def mean_average_accuracy(output, target):
@@ -102,41 +105,36 @@ def mean_average_accuracy(output, target):
 
     return torch.sum(AA) / batch_size
 
-def train_transformer_model(model, dataloader, optimizer, criterion, scheduler = None, device = None, skip=False):
+##FOR BERT LM MASKED PRETRAINING/FINETUNING
+def train_bert(model, dataloader, optimizer, criterion, scheduler = None, device=None):
 
-    print("SKIP FLAG")
-    print(skip)
     model.train()
     avg_loss = AverageMeter()
     avg_acc = AverageMeter()
 
-    for batch_idx, (input_sequence, input_skips, label_sequence, label_skips) in enumerate(dataloader):
+    for batch_idx, (masked_sequence, label_sequence) in enumerate(dataloader):
 
-        input_sequence = input_sequence.to(device)
+        input_sequence = masked_sequence.to(device)
+        label = label_sequence.cuda()
 
-        if skip==False:
-            label = label_sequence.cuda()
-            input_skips = input_skips.cuda()
-            outputs = model(input_sequence, label, input_skips)
-        else:
-            label_sequence = label_sequence.cuda()
-            label = label_skips.cuda()
-            input_skips = input_skips.cuda()
-            outputs = model(input_sequence, label_sequence, input_skips)
-
-        acc = mean_average_accuracy(outputs, label)
+        outputs = model(input_sequence)
+        acc = accuracy(outputs, label)
 
         if batch_idx %1000 == 0:
-            print("PREDICTED SKIP SEQUENCE")
+            print("MASKED SEQUENCE")
+            print(input_sequence[0,:])
+            print("PREDICTED SEQUENCE")
             print(torch.argmax(outputs, dim=2)[0,:])
-            print("ACTUAL SKIP SEQUENCE")
+            print("LABEL SEQUENCE")
             print(label[0,:])
 
         outputs = outputs.reshape(-1, outputs.shape[-1])
         label = label.reshape(-1)
+
         optimizer.zero_grad()
         loss = criterion(outputs, label)
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
         optimizer.step()
 
         avg_loss.update(loss.item(), label.size(0))
@@ -145,61 +143,49 @@ def train_transformer_model(model, dataloader, optimizer, criterion, scheduler =
         if batch_idx % 1000 ==0:
             print("Batch: %d, Train Loss: %.4f, Train Accuracy: %.4f" % ((batch_idx+1), avg_loss.avg, avg_acc.avg))
 
-        '''
-        if (batch_idx+1) % 200 ==0:
+        if (batch_idx+1) % 100 ==0:
             break
-        '''
 
     return avg_loss.avg, avg_acc.avg
 
-def evaluate_transformer_model(model, dataloader, optimizer, criterion, scheduler = None, device = None, skip=False):
 
-    print("EVALUATION")
+def evaluate_bert(model, dataloader, optimizer, criterion, scheduler = None, device = None, skip=False):
 
     model.eval()
     avg_loss = AverageMeter()
     avg_acc = AverageMeter()
 
-    with torch.no_grad():
+    for batch_idx, (masked_sequence, label_sequence) in enumerate(dataloader):
 
-        for batch_idx, (input_sequence, input_skips, label_sequence, label_skips) in enumerate(dataloader):
+        input_sequence = masked_sequence.to(device)
+        label = label_sequence.cuda()
 
-            input_sequence = input_sequence.to(device)
+        outputs = model(input_sequence)
+        acc = accuracy(outputs, label)
 
-            if skip==False:
-                label = label_sequence.cuda()
-                input_skips = input_skips.cuda()
-                outputs = model(input_sequence, label, input_skips)
-            else:
-                label_sequence = label_sequence.cuda()
-                label = label_skips.cuda()
-                input_skips = input_skips.cuda()
-                outputs = model(input_sequence, label_sequence, input_skips)
-            
-            acc = mean_average_accuracy(outputs, label)
+        if batch_idx %100 == 0:
+            print("MASKED SEQUENCE")
+            print(input_sequence[0,:])
+            print("PREDICTED SEQUENCE")
+            print(torch.argmax(outputs, dim=2)[0,:])
+            print("LABEL SEQUENCE")
+            print(label[0,:])
 
-            if batch_idx %1000 == 0:
-                print("PREDICTED SKIP SEQUENCE")
-                print(torch.argmax(outputs, dim=2)[0,:])
-                print("ACTUAL SKIP SEQUENCE")
-                print(label[0,:])
+        outputs = outputs.reshape(-1, outputs.shape[-1])
+        label = label.reshape(-1)
 
-            outputs = outputs.reshape(-1, outputs.shape[-1])
-            label = label.reshape(-1)
+        loss = criterion(outputs, label)
 
-            loss = criterion(outputs, label)
+        avg_loss.update(loss.item(), label.size(0))
+        avg_acc.update(acc.item(), label.size(0))
 
-            avg_loss.update(loss.item(), label.size(0))
-            avg_acc.update(acc.item(), label.size(0))
+        if batch_idx % 1000 ==0:
+            print("Batch: %d, Train Loss: %.4f, Train Accuracy: %.4f" % ((batch_idx+1), avg_loss.avg, avg_acc.avg))
 
-            '''
-            if (batch_idx+1) % 200 ==0:
-                print("Batch: %d, Val Loss: %.4f, Val Accuracy: %.4f" % ((batch_idx+1), avg_loss.avg, avg_acc.avg))
-                break
-            '''
+        if (batch_idx+1) % 200 ==0:
+            break
 
     return avg_loss.avg, avg_acc.avg
-
 
 #Read the data
 print("READING THE DATA")
@@ -222,7 +208,6 @@ with open("data/track_vocabs.pkl", 'rb') as f:
     track_vocab = pickle.load(f)
 
 track_feats = np.load('data/track_embedding.npy')
-bert_embed = pd.read_csv("output/bert_emb_model_base_bert_0.2_1e-4.csv").values[:,1:]
 
 print("VOCAB SIZE")
 print(len(track_vocab))
@@ -235,37 +220,30 @@ print(len(test_tracks))
 
 INPUT_SIZE = len(track_vocab)
 OUTPUT_SIZE = len(track_vocab)
-PAD_IDX = track_vocab['pad']
+PAD_IDX = 0
 BATCH_SIZE = 128
 MAX_LEN = 20
-EPOCHS = 5
+EPOCHS = 3
 SKIP = False
-PAD_MASK = 1
+bert_masking_prob=0.2
 
-print(EPOCHS)
-print(BATCH_SIZE)
+train_dataset = BertModelDataset(train_tracks, train_skips, track_vocab, bert_mask_proportion = bert_masking_prob, skip=SKIP)
+valid_dataset = BertModelDataset(test_tracks, test_skips, track_vocab, bert_mask_proportion = bert_masking_prob, skip=SKIP)
 
-train_dataset = SpotifyDataset(train_tracks, train_skips, track_vocab, bert=False, bert_mask_proportion = 0.2, skip_pred=SKIP, padding=False)
-valid_dataset = SpotifyDataset(test_tracks, test_skips, track_vocab, bert=False, bert_mask_proportion = 0.2, skip_pred=SKIP, padding=False)
-
-train_loader = DataLoader(dataset = train_dataset, batch_size = BATCH_SIZE, shuffle = True, collate_fn =custom_collate_fn)
-valid_loader = DataLoader(dataset = valid_dataset, batch_size = BATCH_SIZE, shuffle = False, collate_fn =custom_collate_fn)
+train_loader = DataLoader(dataset = train_dataset, batch_size = BATCH_SIZE, shuffle = True, collate_fn =bert_collate_fn)
+valid_loader = DataLoader(dataset = valid_dataset, batch_size = BATCH_SIZE, shuffle = False, collate_fn =bert_collate_fn)
 
 #OPTIM PARAMETERS
 learning_rate = 1e-5
 print(learning_rate)
 
-model=StandardTransformer(vocab_size =INPUT_SIZE, d_model=128, nhead=2, num_encoder_layers=2, num_decoder_layers=2, dim_feedforward=2048, max_seq_length=10, skip_pred = SKIP, feat_embed = track_feats, device = device, padding=False, track_feat_embed=bert_embed)
+model=BertTransformer(vocab_size =INPUT_SIZE, d_model=128, nhead=8, num_encoder_layers=8, dim_feedforward=2048, max_seq_length=20, device=device, skip_finetune=SKIP)
 model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.95)
 
-if SKIP:
-    criterion = nn.CrossEntropyLoss()
-else:
-    criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-
+criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 train_losses, val_losses, train_accs, val_accs = [], [], [], []
 
 best_val_loss = 100000000
@@ -274,8 +252,8 @@ for epoch_idx in range(EPOCHS):
     print("Epoch %d" % (epoch_idx+1))
     print("-----------------------------------")
     
-    avg_train_loss, avg_train_acc = train_transformer_model(model, train_loader, optimizer, criterion, scheduler = None, device = device, skip=SKIP)
-    avg_val_loss, avg_val_acc = evaluate_transformer_model(model, valid_loader, optimizer, criterion, scheduler = None, device = device, skip=SKIP)
+    avg_train_loss, avg_train_acc = train_bert(model, train_loader, optimizer, criterion, scheduler = None, device = device)
+    avg_val_loss, avg_val_acc = evaluate_bert(model, valid_loader, optimizer, criterion, scheduler = None, device = device)
     #scheduler.step(train_loss)
 
     train_losses.append(avg_train_loss)
@@ -292,6 +270,9 @@ for epoch_idx in range(EPOCHS):
         best_val_loss = avg_val_loss
         torch.save(model, os.path.join(PATH_OUTPUT, model_name + '.pth'))
         print('Saved Best Model')
+        #bert_embedding_weights = model.embed_src.weight.detach().cpu().numpy()
+        #pd.DataFrame(bert_embedding_weights).to_csv('output/bert_emb_'+model_name+'.csv')
+        #print("SAVED EMBEDDING")
 
 ##SAVING OUTPUT AND LEARNING CURVES
 plot_learning_curves(model_name, train_losses, val_losses, train_accs, val_accs)
@@ -303,4 +284,11 @@ print('TRAINING/VALIDATION SUMMARY')
 print(train_stats.head(len(epoch_range)))
 print('')
 train_stats.to_csv ('output/'+model_name+'.csv', index = None, header=True)
+
 print("DONE EVALUATING")
+
+#SAVE LEARNED EMBEDDINGS
+bert_embedding_weights = model.embed_src.weight.detach().cpu().numpy()
+pd.DataFrame(bert_embedding_weights).to_csv('output/bert_emb_'+model_name+'final'+'.csv')
+print("SAVED EMBEDDING")
+
