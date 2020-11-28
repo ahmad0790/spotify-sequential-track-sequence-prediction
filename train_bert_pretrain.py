@@ -20,8 +20,9 @@ from torch.nn import functional as F
 
 #INIT PARAMS
 PATH_OUTPUT = "output/"
-model_name = 'model_base_bert_0.4'
+model_name = 'model_base_bert_0.2_1e-4'
 torch.manual_seed(1)
+print(model_name)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("You are using device: %s" % device)
@@ -73,12 +74,12 @@ def accuracy(output, target):
     
     """Computes the average accuracy of the predicted skip sequence"""
     
-    seq_len = target.shape[1]
+    output = torch.argmax(output, dim=2)
     output = output[target>0]
-    target = target[output>0]
+    target = target[target>0]
     correct = output.eq(target)
     correct = correct.sum() * 1.0
-    acc = correct / seq_len
+    acc = correct / target.shape[0]
     return acc
 
 def mean_average_accuracy(output, target):
@@ -116,13 +117,10 @@ def train_bert(model, dataloader, optimizer, criterion, scheduler = None, device
         input_sequence = masked_sequence.to(device)
         label = label_sequence.cuda()
 
-        #input_sequence[input_skips==1] = PAD_IDX
-        #label[input_skips==1] = PAD_IDX
-
         outputs = model(input_sequence)
         acc = accuracy(outputs, label)
 
-        if batch_idx %100 == 0:
+        if batch_idx %1000 == 0:
             print("MASKED SEQUENCE")
             print(input_sequence[0,:])
             print("PREDICTED SEQUENCE")
@@ -142,11 +140,11 @@ def train_bert(model, dataloader, optimizer, criterion, scheduler = None, device
         avg_loss.update(loss.item(), label.size(0))
         avg_acc.update(acc.item(), label.size(0))
 
-        if batch_idx % 100 ==0:
+        if batch_idx % 1000 ==0:
             print("Batch: %d, Train Loss: %.4f, Train Accuracy: %.4f" % ((batch_idx+1), avg_loss.avg, avg_acc.avg))
 
         '''
-        if (batch_idx+1) % 1000 ==0:
+        if (batch_idx+1) % 100 ==0:
             break
         '''
 
@@ -165,7 +163,7 @@ def evaluate_bert(model, dataloader, optimizer, criterion, scheduler = None, dev
         label = label_sequence.cuda()
 
         outputs = model(input_sequence)
-        acc = mean_average_accuracy(outputs, label)
+        acc = accuracy(outputs, label)
 
         #do not predict the mask itself
         #outputs = outputs[:,:,2:]
@@ -186,11 +184,11 @@ def evaluate_bert(model, dataloader, optimizer, criterion, scheduler = None, dev
         avg_loss.update(loss.item(), label.size(0))
         avg_acc.update(acc.item(), label.size(0))
 
-        if batch_idx % 100 ==0:
+        if batch_idx % 1000 ==0:
             print("Batch: %d, Train Loss: %.4f, Train Accuracy: %.4f" % ((batch_idx+1), avg_loss.avg, avg_acc.avg))
 
         '''
-        if (batch_idx+1) % 500 ==0:
+        if (batch_idx+1) % 200 ==0:
             break
         '''
 
@@ -234,7 +232,7 @@ BATCH_SIZE = 128
 MAX_LEN = 20
 EPOCHS = 5
 SKIP = False
-bert_masking_prob=0.4
+bert_masking_prob=0.2
 
 train_dataset = SpotifyDataset(train_tracks, train_skips, track_vocab, bert=True, bert_mask_proportion = bert_masking_prob, skip_pred=SKIP, padding=False)
 valid_dataset = SpotifyDataset(test_tracks, test_skips, track_vocab, bert=True, bert_mask_proportion = bert_masking_prob, skip_pred=SKIP, padding=False)
@@ -244,8 +242,9 @@ valid_loader = DataLoader(dataset = valid_dataset, batch_size = BATCH_SIZE, shuf
 
 #OPTIM PARAMETERS
 learning_rate = 1e-4
+print(learning_rate)
 
-model=BertTransformer(vocab_size =INPUT_SIZE, d_model=128, nhead=2, num_encoder_layers=2, dim_feedforward=2048, max_seq_length=20, device=device)
+model=BertTransformer(vocab_size =INPUT_SIZE, d_model=128, nhead=8, num_encoder_layers=8, dim_feedforward=2048, max_seq_length=20, device=device)
 model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -278,6 +277,9 @@ for epoch_idx in range(EPOCHS):
         best_val_loss = avg_val_loss
         torch.save(model, os.path.join(PATH_OUTPUT, model_name + '.pth'))
         print('Saved Best Model')
+        bert_embedding_weights = model.embed_src.weight.detach().cpu().numpy()
+        pd.DataFrame(bert_embedding_weights).to_csv('output/bert_emb_'+model_name+'.csv')
+        print("SAVED EMBEDDING")
 
 ##SAVING OUTPUT AND LEARNING CURVES
 plot_learning_curves(model_name, train_losses, val_losses, train_accs, val_accs)
@@ -294,6 +296,6 @@ print("DONE EVALUATING")
 
 #SAVE LEARNED EMBEDDINGS
 bert_embedding_weights = model.embed_src.weight.detach().cpu().numpy()
-pd.DataFrame(bert_embedding_weights).to_csv('bert_emb_'+model_name+'.csv')
+pd.DataFrame(bert_embedding_weights).to_csv('output/bert_emb_'+model_name+'final'+'.csv')
 print("SAVED EMBEDDING")
 

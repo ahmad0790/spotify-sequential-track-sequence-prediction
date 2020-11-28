@@ -10,7 +10,7 @@ from torch.nn import functional as F
 
 class BertTransformer(nn.Module):
 
-	def __init__(self, vocab_size, d_model, nhead, num_encoder_layers, dim_feedforward, max_seq_length, device=None):
+	def __init__(self, vocab_size, d_model, nhead, num_encoder_layers, dim_feedforward, max_seq_length, device=None, skip_finetune=False):
 		super().__init__()
 
 		self.PAD_MASK = 0
@@ -25,15 +25,17 @@ class BertTransformer(nn.Module):
 		self.pos_enc = nn.Embedding(self.max_length, d_model)
 		self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.d_model, nhead=self.nhead)
 		self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, self.num_encoder_layers)
-		self.fc = nn.Linear(self.d_model, self.vocab_size)
+
+		if skip_finetune:
+			self.fc = nn.Linear(self.d_model, 2)
+		else:
+			self.fc = nn.Linear(self.d_model, self.vocab_size)
+
 
 	def forward(self, src):
 
 		batch_size = src.shape[0]
 		seq_len = src.shape[1]
-
-		#src_key_padding_mask = torch.zeros(src.size()).bool()
-		#src_key_padding_mask[src==self.PAD_MASK] = True
 
 		input_embeddings = self.embed_src(src)
 
