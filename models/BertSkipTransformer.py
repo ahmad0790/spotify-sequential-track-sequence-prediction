@@ -54,18 +54,9 @@ class StandardTransformer(nn.Module):
 
 		if feat_embed is not None:
 			feat_weights = torch.FloatTensor(feat_embed).to(self.device)
-			#print(feat_weights.shape)
 			feat_weights[1,:] = torch.rand(self.num_track_feats)
 			feat_weights = F.normalize(feat_weights, p=2, dim=1)
 			self.feat_embed.weights = nn.Parameter(feat_weights, requires_grad=True)
-
-		'''
-		#get positional embeddings
-		self.positional_encoding = torch.zeros(self.batch_size, self.max_length).to(torch.int64)
-		self.positional_encoding = self.positional_encoding.to(self.device)
-		for i in range(self.batch_size):
-			self.positional_encoding[i,:] = torch.LongTensor([list(range(0,self.max_length))])
-		'''
 
 		self.transformer = nn.Transformer(d_model=self.d_model_combined, nhead=self.nhead, num_encoder_layers=self.num_encoder_layers, num_decoder_layers=self.num_decoder_layers)
 		
@@ -101,7 +92,9 @@ class StandardTransformer(nn.Module):
 	
 		#right shift target embedding by 1 (last token is not predicted)
 		if self.skip_pred == False:
-			tgt = torch.cat((src[:,-1].reshape(src.shape[0],1), tgt[:, :-1]), 1)
+			#tgt = torch.cat((src[:,-1].reshape(src.shape[0],1), tgt[:, :-1]), 1)
+			tgt = torch.cat((src[:,-1].reshape(src.shape[0],1), torch.ones(256, 9), 1)			
+			print(tgt)
 			source_seq_embeddings = torch.cat((self.track_feat_embed(src), self.feat_embed(src)), dim=2) + positional_embeddings
 			target_sequence_embeddings = torch.cat((self.track_feat_embed(tgt), self.feat_embed(tgt)), dim=2) + positional_embeddings 
 

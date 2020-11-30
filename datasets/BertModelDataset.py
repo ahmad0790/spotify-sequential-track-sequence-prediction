@@ -13,6 +13,7 @@ class BertModelDataset(Dataset):
             raise ValueError("Session Tracks and Session Skips have different sizes")
         
         self.tracks = tracks
+        self.skip_tracks = skips
         self.skip = skip
         self.PAD_INDEX = track_vocab['pad']
         self.MASK_INDEX = track_vocab['mask']
@@ -35,12 +36,14 @@ class BertModelDataset(Dataset):
             
             return masked_sequence, label_sequence
         else:
-            return self.tracks[index], self.skips[index]
+            #for regular BERT we just get the usual input
+            return self.tracks[index], self.skip_tracks[index]
 
 
     #only for BERT masking words for fine tuning after pre training
     def mask_words(self, input_sequence):
 
+        '''
         labels = copy.deepcopy(input_sequence[self.SESSION_HALF_LENGTH:])
         masked_labels = [self.PAD_INDEX for i in range(self.SESSION_HALF_LENGTH)]
         masked_labels.extend(labels)
@@ -48,6 +51,9 @@ class BertModelDataset(Dataset):
         masked_sequence = copy.deepcopy(input_sequence[0:self.SESSION_HALF_LENGTH])
         masked_tokens = [self.MASK_INDEX for i in range(self.SESSION_HALF_LENGTH)]
         masked_sequence.extend(masked_tokens)
+        '''
+        masked_sequence = input_sequence[0:19]
+        masked_labels = input_sequence[1:20]
         
         return masked_sequence, masked_labels
 
