@@ -23,11 +23,9 @@ PATH_OUTPUT = "output/"
 EPOCHS = 5
 model_name = 'model_bert_augmented_seq_embed_1e-5_256_dim'
 bert_dim = 256
+print(bert_dim)
 
 SKIP = False
-INPUT_SIZE = len(track_vocab)
-OUTPUT_SIZE = len(track_vocab)
-PAD_IDX = track_vocab['pad']
 BATCH_SIZE = 256
 MAX_LEN = 20
 PAD_MASK = 1
@@ -266,6 +264,10 @@ print(len(test_tracks))
 
 print(EPOCHS)
 print(BATCH_SIZE)
+
+INPUT_SIZE = len(track_vocab)
+OUTPUT_SIZE = len(track_vocab)
+PAD_IDX = track_vocab['pad']
 
 train_dataset = SpotifyDataset(train_tracks, train_skips, track_vocab, bert=False, bert_mask_proportion = 0.2, skip_pred=SKIP, padding=False)
 valid_dataset = SpotifyDataset(test_tracks, test_skips, track_vocab, bert=False, bert_mask_proportion = 0.2, skip_pred=SKIP, padding=False)
