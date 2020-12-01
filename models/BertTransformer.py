@@ -13,6 +13,7 @@ class BertTransformer(nn.Module):
 	def __init__(self, vocab_size, d_model, nhead, num_encoder_layers, dim_feedforward, max_seq_length, device=None):
 		super().__init__()
 
+		self.device = device
 		self.PAD_MASK = 0
 		self.vocab_size = vocab_size
 		self.d_model = d_model
