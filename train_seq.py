@@ -277,7 +277,7 @@ else:
 train_losses, val_losses, train_accs, val_accs = [], [], [], []
 
 best_val_loss = 100000000
-best_val_acc = 100000000
+best_val_acc = 0.00000
 
 for epoch_idx in range(EPOCHS):
     print("-----------------------------------")
