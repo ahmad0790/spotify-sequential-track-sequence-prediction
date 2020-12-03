@@ -20,19 +20,20 @@ from datasets.SpotifyDataset import SpotifyDataset, bert_collate_fn, custom_coll
 
 #INIT PARAMS
 PATH_OUTPUT = "output/"
-EPOCHS = 5
-model_name = 'model_bert_augmented_skip_embed_1e-6_256_dim'
+EPOCHS = 10
+model_name = 'model_bert_augmented_seq_drop_net_embed_1e-4_256_dim'
 bert_dim = 256
 print(bert_dim)
 
+DROP_NET = True
+SKIP = False
 BATCH_SIZE = 256
 MAX_LEN = 20
-SKIP = True
 PAD_MASK = 1
 learning_rate = 1e-5
 d_model = bert_dim-26
+print(d_model)
 
-#bert_model = torch.load('data/model_base_bert_0.2_1e-4.pth')
 bert_model = torch.load('data/model_base_bert_0.2_1e-4_256_dim_v2.pth')
 bert_model.fc = nn.Identity()
 
@@ -125,6 +126,7 @@ def train_transformer_model(model, bert_model, dataloader, optimizer, criterion,
     model.train()
     bert_model.train()
 
+
     avg_loss = AverageMeter()
     avg_acc = AverageMeter()
 
@@ -136,14 +138,13 @@ def train_transformer_model(model, bert_model, dataloader, optimizer, criterion,
         
         if skip==False:
             label = label_sequence.cuda()
-            #input_skips = input_skips.cuda()
-            outputs = model(input_sequence, label, bert_output)
+            outputs = model(input_sequence, label, bert_output,True)
 
         else:
             label_sequence = label_sequence.cuda()
             label = label_skips.cuda()
             input_skips = input_skips.cuda()
-            outputs = model(input_sequence, label_sequence, bert_output, input_skips)
+            outputs = model(input_sequence, label_sequence, input_skips)
 
         acc = mean_average_accuracy(outputs, label)
 
@@ -179,6 +180,7 @@ def evaluate_transformer_model(model, bert_model, dataloader, optimizer, criteri
 
     model.eval()
     bert_model.eval()
+    model.train_flag=False
     
     avg_loss = AverageMeter()
     avg_acc = AverageMeter()
@@ -194,15 +196,12 @@ def evaluate_transformer_model(model, bert_model, dataloader, optimizer, criteri
             if skip==False:
                 label = label_sequence.cuda()                
                 output_tokens, outputs = model.greedy_decoder(model, input_sequence, bert_output, 10, input_sequence[:,-1])
-                #print(output_tokens.shape)
-                #print(outputs.shape)
-                #print(output_tokens[0,:])
 
             else:
                 label_sequence = label_sequence.cuda()
                 label = label_skips.cuda()
                 input_skips = input_skips.cuda()
-                outputs = model(input_sequence, label_sequence, bert_output, input_skips)
+                outputs = model(input_sequence, label_sequence, input_skips)
             
             acc = mean_average_accuracy(outputs, label)
 
@@ -234,11 +233,9 @@ print("READING THE DATA")
 N=100000
 with open("data/all_session_tracks_train.pkl", 'rb') as f:
     train_tracks = pickle.load(f)
-    #train_tracks = train_tracks[0:N]
 
 with open("data/all_session_skips_train.pkl", 'rb') as f:
     train_skips = pickle.load(f)
-    #train_skips = train_skips[0:N]
 
 with open("data/all_session_tracks_test.pkl", 'rb') as f:
     test_tracks = pickle.load(f)
@@ -279,11 +276,13 @@ valid_loader = DataLoader(dataset = valid_dataset, batch_size = BATCH_SIZE, shuf
 #OPTIM PARAMETERS
 print(learning_rate)
 
-model=BertAugmentedTransformer(vocab_size =INPUT_SIZE, d_model=d_model, nhead=2, num_encoder_layers=2, num_decoder_layers=2, dim_feedforward=2048, max_seq_length=10, skip_pred = SKIP, feat_embed = track_feats, device = device)
+if DROP_NET:
+    model=BertAugmentedTransformer(vocab_size =INPUT_SIZE, d_model=d_model, nhead=2, num_encoder_layers=2, num_decoder_layers=2, dim_feedforward=2048, max_seq_length=10, skip_pred = SKIP, feat_embed = track_feats, device = device, p_net = 0.8)
+else:
+    model=BertAugmentedTransformer(vocab_size =INPUT_SIZE, d_model=d_model, nhead=2, num_encoder_layers=2, num_decoder_layers=2, dim_feedforward=2048, max_seq_length=10, skip_pred = SKIP, feat_embed = track_feats, device = device)
 model.to(device)
 
 optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=learning_rate)
-#scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.95)
 
 if SKIP:
     criterion = nn.CrossEntropyLoss()

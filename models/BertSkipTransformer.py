@@ -14,13 +14,11 @@ def gen_nopeek_mask(length):
 	mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
 	return mask
 
-
 class StandardTransformer(nn.Module):
 
 	def __init__(self, vocab_size, d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward, max_seq_length, skip_pred = False, feat_embed = None, device =None, padding=False, track_feat_embed = None):
 		super().__init__()
 
-		self.batch_size = 32
 		self.PAD_MASK = 0
 		self.device = device
 		self.padding = padding
@@ -48,8 +46,10 @@ class StandardTransformer(nn.Module):
 		self.pos_embed = nn.Embedding(self.max_length, self.d_model+self.num_track_feats)
 		self.d_model_combined = self.d_model+self.num_track_feats
 
-		track_feat_weights = torch.FloatTensor(track_feat_embed).to(self.device)			
-		self.track_feat_embed.weights = nn.Parameter(track_feat_weights, requires_grad=True)
+		self.track_feat_embed.weight.data.copy_(torch.from_numpy(track_feat_embed))
+
+		#track_feat_weights = torch.FloatTensor(track_feat_embed).to(self.device)			
+		#self.track_feat_embed.weights = nn.Parameter(track_feat_weights, requires_grad=True)
 		#print(self.track_feat_embed.weights.shape)
 
 		if feat_embed is not None:
@@ -92,14 +92,13 @@ class StandardTransformer(nn.Module):
 	
 		#right shift target embedding by 1 (last token is not predicted)
 		if self.skip_pred == False:
-			#tgt = torch.cat((src[:,-1].reshape(src.shape[0],1), tgt[:, :-1]), 1)
-			tgt = torch.cat((src[:,-1].reshape(src.shape[0],1), torch.ones(256, 9), 1)			
-			print(tgt)
+			tgt = torch.cat((src[:,-1].reshape(src.shape[0],1), tgt[:, :-1]), 1)
 			source_seq_embeddings = torch.cat((self.track_feat_embed(src), self.feat_embed(src)), dim=2) + positional_embeddings
 			target_sequence_embeddings = torch.cat((self.track_feat_embed(tgt), self.feat_embed(tgt)), dim=2) + positional_embeddings 
 
 		else:
-			source_seq_embeddings = torch.cat((self.track_feat_embed(src), self.feat_embed(src)), dim=2) + positional_embeddings + self.skip_embed(skip_sequence)
+			source_seq_embeddings = torch.cat((self.track_feat_embed(src), self.feat_embed(src)), dim=2) + positional_embeddings
+			#source_seq_embeddings = torch.cat((self.track_feat_embed(src), self.feat_embed(src)), dim=2) + positional_embeddings + self.skip_embed(skip_sequence)
 			target_sequence_embeddings = torch.cat((self.track_feat_embed(tgt), self.feat_embed(tgt)), dim=2) + positional_embeddings 
 
 		#generate no peek look ahead mask for target sequence

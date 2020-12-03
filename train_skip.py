@@ -20,7 +20,7 @@ from torch.nn import functional as F
 
 #INIT PARAMS
 PATH_OUTPUT = "output/"
-model_name = 'model_bert_transformer_skip_embed_1e-6'
+model_name = 'model_transformer_skip_w2v_embed_1e-6_masked'
 torch.manual_seed(1)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -121,11 +121,16 @@ def train_transformer_model(model, dataloader, optimizer, criterion, scheduler =
             label_sequence = label_sequence.cuda()
             label = label_skips.cuda()
             input_skips = input_skips.cuda()
+            input_sequence[input_skips==1] = 0
             outputs = model(input_sequence, label_sequence, input_skips)
 
         acc = mean_average_accuracy(outputs, label)
 
         if batch_idx %1000 == 0:
+            print("INPUT SEQUENCE")
+            print(input_sequence[0,:]) 
+            print("INPUT SKIPS")
+            print(input_skips[0,:])
             print("PREDICTED SKIP SEQUENCE")
             print(torch.argmax(outputs, dim=2)[0,:])
             print("ACTUAL SKIP SEQUENCE")
@@ -172,11 +177,16 @@ def evaluate_transformer_model(model, dataloader, optimizer, criterion, schedule
                 label_sequence = label_sequence.cuda()
                 label = label_skips.cuda()
                 input_skips = input_skips.cuda()
+                input_sequence[input_skips==1] = 0
                 outputs = model(input_sequence, label_sequence, input_skips)
 
             acc = mean_average_accuracy(outputs, label)
 
             if batch_idx %1000 == 0:
+                print("INPUT SEQUENCE")
+                print(input_sequence[0,:])
+                print("INPUT SKIPS")
+                print(input_skips[0,:])
                 print("PREDICTED SKIP SEQUENCE")
                 print(torch.argmax(outputs, dim=2)[0,:])
                 print("ACTUAL SKIP SEQUENCE")
@@ -220,7 +230,11 @@ with open("data/track_vocabs.pkl", 'rb') as f:
     track_vocab = pickle.load(f)
 
 track_feats = np.load('data/track_embedding.npy')
-bert_embed = pd.read_csv("output/bert_emb_model_base_bert_0.2_1e-4.csv").values[:,1:]
+#bert_embed = pd.read_csv("output/bert_emb_model_base_bert_0.2_1e-4.csv").values[:,1:]
+pretrained_embed = np.load("data/track_embeddings_w2v.npy")[:,26:]
+pretrained_embed = np.concatenate([pretrained_embed, np.zeros((pretrained_embed.shape[0],2),dtype=pretrained_embed.dtype)], axis=1)
+print("EMBED")
+print(pretrained_embed.shape)
 
 print("VOCAB SIZE")
 print(len(track_vocab))
@@ -234,11 +248,13 @@ print(len(test_tracks))
 INPUT_SIZE = len(track_vocab)
 OUTPUT_SIZE = len(track_vocab)
 PAD_IDX = track_vocab['pad']
-BATCH_SIZE = 64
+BATCH_SIZE = 256
 MAX_LEN = 20
 EPOCHS = 5
 SKIP = True
 PAD_MASK = 1
+learning_rate = 1e-6
+d_model = 100
 
 train_dataset = SpotifyDataset(train_tracks, train_skips, track_vocab, bert=False, bert_mask_proportion = 0.2, skip_pred=SKIP, padding=False)
 valid_dataset = SpotifyDataset(test_tracks, test_skips, track_vocab, bert=False, bert_mask_proportion = 0.2, skip_pred=SKIP, padding=False)
@@ -247,10 +263,9 @@ train_loader = DataLoader(dataset = train_dataset, batch_size = BATCH_SIZE, shuf
 valid_loader = DataLoader(dataset = valid_dataset, batch_size = BATCH_SIZE, shuffle = False, collate_fn =custom_collate_fn)
 
 #OPTIM PARAMETERS
-learning_rate = 1e-6
 print(learning_rate)
 
-model=StandardTransformer(vocab_size =INPUT_SIZE, d_model=128, nhead=2, num_encoder_layers=2, num_decoder_layers=2, dim_feedforward=2048, max_seq_length=10, skip_pred = SKIP, feat_embed = track_feats, device = device, padding=False, track_feat_embed=bert_embed)
+model=StandardTransformer(vocab_size =INPUT_SIZE, d_model=102, nhead=4, num_encoder_layers=4, num_decoder_layers=4, dim_feedforward=2048, max_seq_length=10, skip_pred = SKIP, feat_embed = track_feats, device = device, padding=False, track_feat_embed=pretrained_embed)
 model.to(device)
 
 #optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -266,6 +281,8 @@ else:
 train_losses, val_losses, train_accs, val_accs = [], [], [], []
 
 best_val_loss = 100000000
+best_val_acc = 0.0000
+
 for epoch_idx in range(EPOCHS):
     print("-----------------------------------")
     print("Epoch %d" % (epoch_idx+1))
@@ -284,10 +301,12 @@ for epoch_idx in range(EPOCHS):
     print("Training Accuracy: %.4f. Validation Accuracy: %.4f. " % (avg_train_acc, avg_val_acc))
     print("Training Perplexity: %.4f. Validation Perplexity: %.4f. " % (np.exp(avg_train_loss), np.exp(avg_val_loss)))
 
-    if avg_val_loss < best_val_loss:
+    if (avg_val_loss < best_val_loss) or (avg_val_acc > best_val_acc):
         print('Found Best')
         best_val_loss = avg_val_loss
+        best_val_acc = avg_val_acc
         torch.save(model, os.path.join(PATH_OUTPUT, model_name + '.pth'))
+        torch.save(model.state_dict(), os.path.join(PATH_OUTPUT, model_name + '_dict' + '.pth'))
         print('Saved Best Model')
 
 ##SAVING OUTPUT AND LEARNING CURVES
