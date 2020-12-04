@@ -14,15 +14,16 @@ import torch.nn as nn
 
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-from models.PytorchTransformer import StandardTransformer
+from models.BertSeqTransformer import StandardTransformer
 from datasets.SpotifyDataset import SpotifyDataset, bert_collate_fn, custom_collate_fn
 from torch.nn import functional as F
 
 #INIT PARAMS
 PATH_OUTPUT = "output/"
-model_name = 'model_base_transformer_skip'
+model_name = 'model_bert_transformer_seq_embed_1e-5_256_dim'
 torch.manual_seed(1)
 
+EPOCHS = 5
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("You are using device: %s" % device)
 
@@ -102,57 +103,11 @@ def mean_average_accuracy(output, target):
 
     return torch.sum(AA) / batch_size
 
-##FOR BERT LM MASKED PRETRAINING/FINETUNING
-def train_bert(model, dataloader, optimizer, criterion, scheduler = None):
-
-    model.train()
-    avg_loss = AverageMeter()
-    avg_acc = AverageMeter()
-
-    for batch_idx, (input_sequence, input_skips, label_sequence) in enumerate(dataloader):
-
-        input_sequence = input_sequence.to(device)
-        label = label_sequence.cuda()
-
-        input_sequence[input_skips==1] = PAD_IDX
-        label[input_skips==1] = PAD_IDX
-
-        outputs = model(input_sequence)
-        outputs = outputs.reshape(-1, outputs.shape[-1])
-        label = label.reshape(-1)
-
-        if batch_idx %100 == 0:
-            print("PREDICTED SEQUENCE")
-            print(outputs[0,:])
-            print(torch.argmax(outputs, dim=2)[0:10,:])
-            print("ACTUAL SEQUENCE")
-            print(label[0:10,:])
-
-        optimizer.zero_grad()
-        loss = criterion(outputs, label)
-        loss.backward()
-        #torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
-        optimizer.step()
-
-        avg_loss.update(loss.item(), label.size(0))
-        avg_acc.update(acc.item(), label.size(0))
-
-        if batch_idx % 100 ==0:
-            print("Batch: %d, Train Loss: %.4f, Train Accuracy: %.4f" % ((batch_idx+1), avg_loss.avg, avg_acc.avg))
-
-        '''
-        if (batch_idx+1) % 1000 ==0:
-            break
-        '''
-
-
-    return avg_loss.avg, avg_acc.avg
-
-
 def train_transformer_model(model, dataloader, optimizer, criterion, scheduler = None, device = None, skip=False):
 
     print("SKIP FLAG")
     print(skip)
+
     model.train()
     avg_loss = AverageMeter()
     avg_acc = AverageMeter()
@@ -160,11 +115,12 @@ def train_transformer_model(model, dataloader, optimizer, criterion, scheduler =
     for batch_idx, (input_sequence, input_skips, label_sequence, label_skips) in enumerate(dataloader):
 
         input_sequence = input_sequence.to(device)
-        #input_sequence[input_skips==1] = 1
 
         if skip==False:
             label = label_sequence.cuda()
-            outputs = model(input_sequence, label)
+            input_skips = input_skips.cuda()
+            outputs = model(input_sequence, label, input_skips)
+
         else:
             label_sequence = label_sequence.cuda()
             label = label_skips.cuda()
@@ -173,7 +129,7 @@ def train_transformer_model(model, dataloader, optimizer, criterion, scheduler =
 
         acc = mean_average_accuracy(outputs, label)
 
-        if batch_idx %100 == 0:
+        if batch_idx %1000 == 0:
             print("PREDICTED SKIP SEQUENCE")
             print(torch.argmax(outputs, dim=2)[0,:])
             print("ACTUAL SKIP SEQUENCE")
@@ -189,7 +145,7 @@ def train_transformer_model(model, dataloader, optimizer, criterion, scheduler =
         avg_loss.update(loss.item(), label.size(0))
         avg_acc.update(acc.item(), label.size(0))
 
-        if batch_idx % 100 ==0:
+        if batch_idx % 1000 ==0:
             print("Batch: %d, Train Loss: %.4f, Train Accuracy: %.4f" % ((batch_idx+1), avg_loss.avg, avg_acc.avg))
 
         '''
@@ -215,16 +171,23 @@ def evaluate_transformer_model(model, dataloader, optimizer, criterion, schedule
 
             if skip==False:
                 label = label_sequence.cuda()
-                outputs = model(input_sequence, label)
+                #input_skips = input_skips.cuda()
+                #input_skips = input_skips.to(device)
+                
+                output_tokens, outputs = model.greedy_decoder(model, input_sequence, 10, input_sequence[:,-1])
+                #print(output_tokens.shape)
+                #print(outputs.shape)
+                #print(output_tokens[0,:])
+
             else:
                 label_sequence = label_sequence.cuda()
                 label = label_skips.cuda()
                 input_skips = input_skips.cuda()
                 outputs = model(input_sequence, label_sequence, input_skips)
-
+            
             acc = mean_average_accuracy(outputs, label)
 
-            if batch_idx %100 == 0:
+            if batch_idx %1000 == 0:
                 print("PREDICTED SKIP SEQUENCE")
                 print(torch.argmax(outputs, dim=2)[0,:])
                 print("ACTUAL SKIP SEQUENCE")
@@ -268,6 +231,7 @@ with open("data/track_vocabs.pkl", 'rb') as f:
     track_vocab = pickle.load(f)
 
 track_feats = np.load('data/track_embedding.npy')
+bert_embed = pd.read_csv("output/bert_emb_model_base_bert_0.2_1e-4.csv").values[:,1:]
 
 print("VOCAB SIZE")
 print(len(track_vocab))
@@ -281,11 +245,13 @@ print(len(test_tracks))
 INPUT_SIZE = len(track_vocab)
 OUTPUT_SIZE = len(track_vocab)
 PAD_IDX = track_vocab['pad']
-BATCH_SIZE = 128
+BATCH_SIZE = 256
 MAX_LEN = 20
-EPOCHS = 5
-SKIP = True
+SKIP = False
 PAD_MASK = 1
+
+print(EPOCHS)
+print(BATCH_SIZE)
 
 train_dataset = SpotifyDataset(train_tracks, train_skips, track_vocab, bert=False, bert_mask_proportion = 0.2, skip_pred=SKIP, padding=False)
 valid_dataset = SpotifyDataset(test_tracks, test_skips, track_vocab, bert=False, bert_mask_proportion = 0.2, skip_pred=SKIP, padding=False)
@@ -294,12 +260,13 @@ train_loader = DataLoader(dataset = train_dataset, batch_size = BATCH_SIZE, shuf
 valid_loader = DataLoader(dataset = valid_dataset, batch_size = BATCH_SIZE, shuffle = False, collate_fn =custom_collate_fn)
 
 #OPTIM PARAMETERS
-learning_rate = 1e-4
+learning_rate = 1e-5
+print(learning_rate)
 
-model=StandardTransformer(vocab_size =INPUT_SIZE, d_model=128, nhead=2, num_encoder_layers=2, num_decoder_layers=2, dim_feedforward=2048, max_seq_length=10, skip_pred = SKIP, feat_embed = track_feats, device = device, padding=False)
+model=StandardTransformer(vocab_size =INPUT_SIZE, d_model=256, nhead=2, num_encoder_layers=2, num_decoder_layers=2, dim_feedforward=2048, max_seq_length=10, skip_pred = SKIP, feat_embed = track_feats, device = device)
 model.to(device)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=learning_rate)
 #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.95)
 
 if SKIP:
@@ -310,6 +277,8 @@ else:
 train_losses, val_losses, train_accs, val_accs = [], [], [], []
 
 best_val_loss = 100000000
+best_val_acc = 0.00000
+
 for epoch_idx in range(EPOCHS):
     print("-----------------------------------")
     print("Epoch %d" % (epoch_idx+1))
@@ -328,10 +297,12 @@ for epoch_idx in range(EPOCHS):
     print("Training Accuracy: %.4f. Validation Accuracy: %.4f. " % (avg_train_acc, avg_val_acc))
     print("Training Perplexity: %.4f. Validation Perplexity: %.4f. " % (np.exp(avg_train_loss), np.exp(avg_val_loss)))
 
-    if avg_val_loss < best_val_loss:
+    if (avg_val_loss < best_val_loss) or (avg_val_acc > best_val_acc):
         print('Found Best')
         best_val_loss = avg_val_loss
+        best_val_acc = avg_val_acc
         torch.save(model, os.path.join(PATH_OUTPUT, model_name + '.pth'))
+        torch.save(model.state_dict(), os.path.join(PATH_OUTPUT, model_name + '_dict' + '.pth'))
         print('Saved Best Model')
 
 ##SAVING OUTPUT AND LEARNING CURVES
