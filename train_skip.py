@@ -102,6 +102,21 @@ def mean_average_accuracy(output, target):
 
     return torch.sum(AA) / batch_size
 
+def accuracy_at_k(output, target):
+    
+    output = output.to(device)
+    target = target.to(device)
+    
+    T = output.shape[1]
+    batch_size = target.shape[0]
+    #output = torch.argmax(output, dim=2)
+    acc = torch.zeros(T)
+
+    for i in range(T):        
+        acc[i] = torch.mean(accuracy(output[:,i].reshape(batch_size,1), target[:,i].reshape(batch_size,1)))
+        
+    return acc
+
 def train_transformer_model(model, dataloader, optimizer, criterion, scheduler = None, device = None, skip=False):
 
     print("SKIP FLAG")
@@ -177,7 +192,6 @@ def evaluate_transformer_model(model, dataloader, optimizer, criterion, schedule
                 label_sequence = label_sequence.cuda()
                 label = label_skips.cuda()
                 input_skips = input_skips.cuda()
-                input_sequence[input_skips==1] = 0
                 outputs = model(input_sequence, label_sequence, input_skips)
 
             acc = mean_average_accuracy(outputs, label)
