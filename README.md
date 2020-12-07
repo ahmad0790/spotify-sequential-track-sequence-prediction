@@ -19,11 +19,13 @@ You may download data used for this project in this google drive https://drive.g
 ### How to run
 
 #### Deep reinforcement learning
-Download the code to ./DRL/data 
+Download the data to ./DRL/data 
 The skip prediction code can be found in .DRL/model/RL_based-binary.ipynb
 The sequence prediction code can be found in .DRL/model/RL_Based_seq.ipynb
 
-####
+#### LSTM based architecture
+Download the data to ./data
+The LSTM based architctures can be run using the notebook spotify_lstm_architectures.ipynb
 
 
 ####
