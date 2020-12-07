@@ -1,0 +1,21 @@
+name: dl
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.6
+  - pytorch>=1.3.0
+  - cudatoolkit>=9.2    # mac OS users should comment out this (for CPU only) or build from the source
+  - numpy
+  - pandas
+  - matplotlib==3.1.0
+  - pytest
+  - pyyaml
+  - tqdm
+  - einops
+  - ipywidgets
+  - pip
+  - pip:
+    - delayed-assert
+    - torchsummary
+
