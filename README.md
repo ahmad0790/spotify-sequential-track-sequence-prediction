@@ -2,6 +2,11 @@
 
 This is the repo for Final project for CS7643-Deep Learning
 
+Author
+Ahmad Khan: akhan361@gatech.edu
+Tianyuan Cui: tcui33@gatech.edu
+Sagar Arora: sarora83@gatech.edu
+
 ## Getting the Source Data
 
 The data used for this work is from CrowdAI Spotify skip challenge
