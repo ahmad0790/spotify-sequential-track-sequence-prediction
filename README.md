@@ -17,7 +17,6 @@ You may download data used for this project in this google drive https://drive.g
 
 
 ### How to run
-
 #### Deep reinforcement learning
 Download the data to ./DRL/data 
 The skip prediction code can be found in .DRL/model/RL_based-binary.ipynb
@@ -27,5 +26,18 @@ The sequence prediction code can be found in .DRL/model/RL_Based_seq.ipynb
 Download the data to ./data
 The LSTM based architctures can be run using the notebook spotify_lstm_architectures.ipynb
 
+#### Transformer Based Architectures
+Download the data to ./data
+create  environment: `conda env create -f environment.yml`
+and then `source activate bd4h_project`
+
+The transformer models are all in `model` folder.
+1) `SeqTransformer.py` this is the Standard Transformer Track Sequence Prediction Model
+2) `SkipTransformer.py`this is the Standard Transformer Track Skip Prediction Model
+3) `BertAugmentedTransformer.py` this is the Bert Augmented Transformer mentioned in our paper (uses `CustomizedTransformer.py`)
+4) `BertAugmentedTransformer.py` this is the Bert Augmented Transformer with DropNet mentioned in our paper (uses `CustomizedTransformerDropnet.py`)
+5) `BertTransformer.py` this is the Bert Encoder model used for both pretrainining and fine tuning a modified BERT For the recommendation task
+6)  `CustomizedTransformer.py` this is the custom Torch Transformer Layers built to be used in the Bert Augmented Transformer (modified from original Torch source code)
+7)  `CustomizedTransformerDropNet.py` this is the custom Torch Transformer Layers with DropNet added built to be used in the Bert Augmented Transformer (modified from original torch source code)
 
 ####
