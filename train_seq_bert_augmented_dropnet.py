@@ -15,7 +15,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.nn import functional as F
 from einops import rearrange
 
-from models.BertAugmentedTransformer import BertAugmentedTransformer
+from models.BertAugmentedTransformerDropNet import BertAugmentedTransformer
 from datasets.SpotifyDataset import SpotifyDataset, bert_collate_fn, custom_collate_fn
 
 #INIT PARAMS
