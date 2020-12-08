@@ -96,46 +96,26 @@ class StandardTransformer(nn.Module):
 
 	def greedy_decoder(self, model, src, max_len, start_tgt_sequence):
 		encoder_output = model.encode(src)
-		#what the start token is
-		#print("DECODER DEEBUG")
-		tgt_tokens = start_tgt_sequence.reshape(start_tgt_sequence.shape[0], 1)		
-		#tgt_probs = torch.FloatTensor((start_tgt_sequence.shape[0], self.max_length, self.vocab_size))
-		#print(tgt_tokens.shape)
 
-		#tgt_no_peek_mask = self.gen_nopeek_mask(tgt_tokens.shape[1]).to(self.device)
-		#ys = torch.ones(1, 1).fill_(start_symbol).type_as(src.data)
+		tgt_tokens = start_tgt_sequence.reshape(start_tgt_sequence.shape[0], 1)		
 		tgt_prob = torch.zeros((start_tgt_sequence.shape[0],self.max_length, self.vocab_size)).to(self.device)
-		#print(tgt_prob.shape)
 
 		for i in range(max_len):
 
-			#print(i)
-
-			#tgt_no_peek_mask = self.gen_nopeek_mask(tgt_tokens.shape[1]).to(self.device)
 			output = model.decode(encoder_output, tgt_tokens)
-			#print("OUTPUT")
-			#print(output.shape)
 			output = self.fc(output)[-1, :,:]
-			#print("FC")
-			#print(output.shape)
 			tgt_prob[:,i,:] = output
 			output = F.log_softmax(output, dim=1)
-			#print(output.shape)
-			#next_token_prob = output
 			next_token_pred = torch.argmax(output, dim = 1).reshape(output.shape[0],1)
-			#print(next_token_pred.shape)
 
 			#remember this is the input to the model
 			if i != (max_len - 1):
 				tgt_tokens = torch.cat([tgt_tokens, next_token_pred], dim=1)
-				#print(tgt_tokens.shape)
-			#tgt_probs[:,i,:] = next_token_prob
-			#print(tgt_probs.shape)
-			#print(tgt_tokens)
-		#print("FINISHED DECODING")
+
 		return tgt_tokens, tgt_prob
 
-
+	#REFERENCE: https://andrewpeng.dev/transformer-pytorch/
+	#https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html
 	def gen_nopeek_mask(self, length):
 		mask = rearrange(torch.triu(torch.ones(length, length)) == 1, 'h w -> w h')
 		mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))

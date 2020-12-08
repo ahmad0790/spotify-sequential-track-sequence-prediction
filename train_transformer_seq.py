@@ -14,7 +14,7 @@ import torch.nn as nn
 
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-from models.BertSeqTransformer import StandardTransformer
+from models.SeqTransformer import StandardTransformer
 from datasets.SpotifyDataset import SpotifyDataset, bert_collate_fn, custom_collate_fn
 from torch.nn import functional as F
 
