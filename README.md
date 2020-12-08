@@ -40,4 +40,15 @@ The transformer models are all in `model` folder.
 6)  `CustomizedTransformer.py` this is the custom Torch Transformer Layers built to be used in the Bert Augmented Transformer (modified from original Torch source code)
 7)  `CustomizedTransformerDropNet.py` this is the custom Torch Transformer Layers with DropNet added built to be used in the Bert Augmented Transformer (modified from original torch source code)
 
+The training scripts for the models are all in main folder.
+1) `train_transformer_seq.py` trains the Standard Transformer track sequence prediction model
+2) `train_transformer_skip.py` trains the Standard Transformer track skip prediction model
+3) `train_seq_bert_augmented.py` trains the Bert Augmented Transformer track sequence prediction model
+4) `train_skip_bert_augmented.py` trains the Bert Augmented Transformer track skip prediction model
+5) `train_seq_bert_augmented_dropnet.py` trains the Bert Augmented Transformer with DropNet for the track sequence prediction model
+6) `train_bert_pretrain.py` preetrains the BERT model with 20% masking for the Track corpus
+7) `train_bert_finetune_skip.py` trains the BERT finetuned model afteer pretraining for the track skip problem
+8) `train_bert_finetune_seq.py` trains the BERT finetuned skip model after pretraining for the track skip problem
+
+
 ####
