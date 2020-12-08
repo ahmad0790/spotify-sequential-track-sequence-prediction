@@ -53,8 +53,8 @@ The training scripts for the models are all in main folder.
 Additionally there is a little bit of modeling analysis done in the following notebook:
 1) `spotify_model_analysis_skip_seq.ipynb`
 
-Additionally the following script was used to create the sampled dataset of 3.3M sessions with 103K unique track ids used in all models
-`utils/datapreprocessing.py
+Finally the following script was used to create the sampled dataset of 3.3M sessions with 103K unique track ids used in all models
+1) `utils/datapreprocessing.py
 
 
 ####
