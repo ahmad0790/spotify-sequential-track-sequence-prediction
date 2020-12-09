@@ -252,16 +252,14 @@ valid_loader = DataLoader(dataset = valid_dataset, batch_size = BATCH_SIZE, shuf
 
 #OPTIM PARAMETERS
 learning_rate = 1e-4
-#change output layer to 2 for skip prediction
 print(learning_rate)
 
-#model=BertTransformer(vocab_size =INPUT_SIZE, d_model=128, nhead=2, num_encoder_layers=2, dim_feedforward=2048, max_seq_length=20, device=device, skip_finetune=SKIP, pretrained_embed=track_feats)
+#change output layer to 2 for skip prediction
 model.fc = nn.Linear(128, 2)
 model.to(device)
 print(model)
 
 optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=learning_rate)
-#scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.95)
 
 #criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 criterion = nn.CrossEntropyLoss()
@@ -277,7 +275,6 @@ for epoch_idx in range(EPOCHS):
     
     avg_train_loss, avg_train_acc = train_bert(model, train_loader, optimizer, criterion, scheduler = None, device = device, epoch_idx =epoch_idx)
     avg_val_loss, avg_val_acc = evaluate_bert(model, valid_loader, optimizer, criterion, scheduler = None, device = device, epoch_idx =epoch_idx)
-    #scheduler.step(train_loss)
 
     train_losses.append(avg_train_loss)
     val_losses.append(avg_val_loss)
@@ -295,9 +292,6 @@ for epoch_idx in range(EPOCHS):
         torch.save(model, os.path.join(PATH_OUTPUT, model_name + '.pth'))
         torch.save(model.state_dict(), os.path.join(PATH_OUTPUT, model_name + '_dict' + '.pth'))
         print('Saved Best Model')
-        #bert_embedding_weights = model.embed_src.weight.detach().cpu().numpy()
-        #pd.DataFrame(bert_embedding_weights).to_csv('output/bert_emb_'+model_name+'.csv')
-        #print("SAVED EMBEDDING")
 
 ##SAVING OUTPUT AND LEARNING CURVES
 plot_learning_curves(model_name, train_losses, val_losses, train_accs, val_accs)
@@ -311,9 +305,4 @@ print('')
 train_stats.to_csv ('output/'+model_name+'.csv', index = None, header=True)
 
 print("DONE EVALUATING")
-
-#SAVE LEARNED EMBEDDINGS
-bert_embedding_weights = model.embed_src.weight.detach().cpu().numpy()
-pd.DataFrame(bert_embedding_weights).to_csv('output/bert_emb_'+model_name+'final'+'.csv')
-print("SAVED EMBEDDING")
 

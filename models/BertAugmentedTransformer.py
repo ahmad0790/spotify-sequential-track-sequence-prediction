@@ -32,7 +32,7 @@ class BertAugmentedTransformer(nn.Module):
 
 		self.skip_embed = nn.Embedding(2, self.d_model_combined)
 		self.feat_embed = nn.Embedding(self.vocab_size, self.num_track_feats)
-		self.track_embed = nn.Embedding(self.vocab_size, self.d_model_combined)
+		self.track_embed = nn.Embedding(self.vocab_size, self.d_model)
 		self.pos_embed = nn.Embedding(self.max_length, self.d_model_combined)
 
 		feat_weights = torch.FloatTensor(feat_embed).to(self.device)

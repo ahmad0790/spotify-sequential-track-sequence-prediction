@@ -24,7 +24,6 @@ EPOCHS = 5
 model_name = 'model_bert_augmented_seq_embed_1e-5_256_dim'
 bert_dim = 256
 print(bert_dim)
-
 SKIP = False
 BATCH_SIZE = 256
 MAX_LEN = 20
@@ -251,7 +250,6 @@ with open("data/track_vocabs.pkl", 'rb') as f:
     track_vocab = pickle.load(f)
 
 track_feats = np.load('data/track_embedding.npy')
-bert_embed = pd.read_csv("output/bert_emb_model_base_bert_0.2_1e-4.csv").values[:,1:]
 
 print("VOCAB SIZE")
 print(len(track_vocab))
@@ -282,7 +280,6 @@ model=BertAugmentedTransformer(vocab_size =INPUT_SIZE, d_model=d_model, nhead=2,
 model.to(device)
 
 optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=learning_rate)
-#scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.95)
 
 if SKIP:
     criterion = nn.CrossEntropyLoss()
