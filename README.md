@@ -31,7 +31,6 @@ Download the data to ./data
 create  environment: `conda env create -f environment.yml`
 and then `source activate bd4h_project`
 
-##### MODELS
 The transformer models are all in `model` folder.
 1) `SeqTransformer.py` this is the Standard Transformer Track Sequence Prediction Model
 2) `SkipTransformer.py`this is the Standard Transformer Track Skip Prediction Model
@@ -41,7 +40,6 @@ The transformer models are all in `model` folder.
 6)  `CustomizedTransformer.py` this is the custom Torch Transformer Layers built to be used in the Bert Augmented Transformer (modified from original Torch source code)
 7)  `CustomizedTransformerDropNet.py` this is the custom Torch Transformer Layers with DropNet added built to be used in the Bert Augmented Transformer (modified from original torch source code)
 
-#### TRAINING SCRIPTS
 The training scripts for the models are all in main folder.
 1) `train_transformer_seq.py` trains the Standard Transformer track sequence prediction model
 2) `train_transformer_skip.py` trains the Standard Transformer track skip prediction model
@@ -54,10 +52,10 @@ Note the following models all need a pretrained BERT Model on the Spotify Track 
 5) `train_bert_finetune_seq.py` trains the BERT finetuned skip model after pretraining for the track skip problem
 
 Additionally if you wish to Pretrain your own BERT model on our Song Corpus you can do so using the following script.
-6) `train_bert_pretrain.py` preetrains the BERT model with 20% masking for the Track corpus
+1) `train_bert_pretrain.py` preetrains the BERT model with 20% masking for the Track corpus
 
 Here is a little bit of modeling analysis done in the following notebook.
-7) `spotify_model_analysis_skip_seq.ipynb`
+1) `spotify_model_analysis_skip_seq.ipynb`
 
 Finally the following script was used to create the sampled dataset of 3.3M sessions with 103K unique track ids used in all models
 8) `utils/datapreprocessing.py`
