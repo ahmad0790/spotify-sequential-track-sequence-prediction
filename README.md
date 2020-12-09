@@ -17,6 +17,8 @@ You may download data used for this project in this google drive https://drive.g
 
 
 ### How to run
+You must have a GPU machine to run these models. The models will not run if a GPU is not installed and might throw errors.
+
 #### Deep reinforcement learning (Tianyuan's Code Contribution)
 Download the data to ./DRL/data 
 The skip prediction code can be found in .DRL/model/RL_based-binary.ipynb
@@ -29,7 +31,7 @@ The LSTM based architctures can be run using the notebook spotify_lstm_architect
 #### Transformer Based Architectures (Ahmad's Code Contribution)
 Download the data to ./data
 create  environment: `conda env create -f environment.yml`
-and then `source activate bd4h_project`
+and then `source activate dl`
 
 The transformer models are all in `model` folder.
 1) `SeqTransformer.py` this is the Standard Transformer Track Sequence Prediction Model
