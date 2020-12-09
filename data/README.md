@@ -1,0 +1,1 @@
+Download the data from the following link, unzip and palace it inside the data folder. Data includes processed train, test sessions and skip data. It also includes some pertained BERT embedding models and Word2Vec models used for some of the model training.
