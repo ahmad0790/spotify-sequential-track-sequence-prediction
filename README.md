@@ -49,7 +49,7 @@ The training scripts for the models are all in main folder.
 Note the following models all need a pretrained BERT Model on the Spotify Track data. We provide a few pretrained models in the data.zip folder you have to download which you can automatically use for these models.
 1) `train_seq_bert_augmented.py` trains the Bert Augmented Transformer track sequence prediction model
 2) `train_skip_bert_augmented.py` trains the Bert Augmented Transformer track skip prediction model
-3) `train_seq_bert_augmented_dropnet.py` trains the Bert Augmented Transformer with DropNet for the track sequence prediction model. Note: we do not use this version in the final paper because adding DropNet causes extreme overfitting. We instead use `train_skip_bert_augmented.py` as the Bert     Augmented Transformer referenced in the paper
+3) `train_seq_bert_augmented_dropnet.py` trains the Bert Augmented Transformer with DropNet for the track sequence prediction model. Note: we do not use this version in the final paper because adding DropNet causes extreme overfitting. We instead use `train_seq_bert_augmented.py` as the Bert Augmented Transformer referenced in the paper for the track sequence recommendation problem and `train_skip_bert_augmented.py` for the skip prediction problem.
 4) `train_bert_finetune_skip.py` trains the BERT finetuned model afteer pretraining for the track skip problem
 5) `train_bert_finetune_seq.py` trains the BERT finetuned skip model after pretraining for the track skip problem
 
